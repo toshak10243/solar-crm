@@ -1,0 +1,32 @@
+{
+  "name": "solar_crm_backend",
+  "version": "1.0.0",
+  "description": "Solar CRM Backend API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "solar",
+    "crm",
+    "node",
+    "express",
+    "mysql"
+  ],
+  "author": "Digiink Solutions",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "mysql2": "^3.23.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
