@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../../services/authService";
+import { isLoggedIn, setToken, setUser } from "../../utils/auth";
 
 import {
   Box,
@@ -9,11 +10,6 @@ import {
   Button,
   IconButton,
   InputAdornment,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
   CircularProgress,
   Divider,
   Checkbox,
@@ -29,12 +25,19 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 
-// Image Imports as specified
+// Image Imports
 import logo from "../../assets/images/logo.png";
 import loginBanner from "../../assets/images/login-banner.jpg";
 
 const Login = () => {
   const navigate = useNavigate();
+
+  // Auto Login check
+  useEffect(() => {
+    if (isLoggedIn()) {
+      navigate("/dashboard");
+    }
+  }, [navigate]);
 
   // State Management
   const [identifier, setIdentifier] = useState("");
@@ -43,20 +46,15 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [openResetDialog, setOpenResetDialog] = useState(false);
 
   // Handlers
   const handleTogglePassword = () => {
     setShowPassword((prev) => !prev);
   };
 
-  const handleOpenResetDialog = (e) => {
+  const handleForgotPasswordClick = (e) => {
     e.preventDefault();
-    setOpenResetDialog(true);
-  };
-
-  const handleCloseResetDialog = () => {
-    setOpenResetDialog(false);
+    navigate("/forgot-password");
   };
 
   const handleSubmit = async (e) => {
@@ -76,8 +74,9 @@ const Login = () => {
         password,
       });
 
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      // Saving using auth.js utilities
+      setToken(response.data.token);
+      setUser(response.data.user);
 
       navigate("/dashboard");
     } catch (error) {
@@ -335,33 +334,19 @@ const Login = () => {
 
             {/* Password Input */}
             <Box sx={{ mb: 2 }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
-                <Typography
-                  component="label"
-                  htmlFor="password-input"
-                  sx={{
-                    fontSize: "0.8125rem",
-                    fontWeight: 600,
-                    color: "#334155",
-                  }}
-                >
-                  Password
-                </Typography>
-                <Link
-                  component="button"
-                  type="button"
-                  onClick={handleOpenResetDialog}
-                  underline="hover"
-                  sx={{
-                    fontSize: "0.8125rem",
-                    fontWeight: 600,
-                    color: "#2563EB",
-                    cursor: "pointer",
-                  }}
-                >
-                  Forgot password?
-                </Link>
-              </Box>
+              <Typography
+                component="label"
+                htmlFor="password-input"
+                sx={{
+                  display: "block",
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  color: "#334155",
+                  mb: 1,
+                }}
+              >
+                Password
+              </Typography>
 
               <TextField
                 id="password-input"
@@ -422,6 +407,24 @@ const Login = () => {
                   },
                 }}
               />
+
+              {/* Forgot Password Link Navigates to /forgot-password */}
+              <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
+                <Link
+                  component="button"
+                  type="button"
+                  onClick={handleForgotPasswordClick}
+                  underline="hover"
+                  sx={{
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    color: "#2563EB",
+                    cursor: "pointer",
+                  }}
+                >
+                  Forgot password?
+                </Link>
+              </Box>
             </Box>
 
             {/* Remember Me Option */}
@@ -507,60 +510,6 @@ const Login = () => {
           </Typography>
         </Box>
       </Box>
-
-      {/* Forgot Password Material-UI Dialog */}
-      <Dialog
-        open={openResetDialog}
-        onClose={handleCloseResetDialog}
-        aria-labelledby="password-reset-dialog-title"
-        aria-describedby="password-reset-dialog-description"
-        PaperProps={{
-          sx: {
-            borderRadius: "12px",
-            p: 1,
-            maxWidth: "420px",
-            width: "100%",
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-          },
-        }}
-      >
-        <DialogTitle id="password-reset-dialog-title" sx={{ pb: 1, pt: 2, px: 3 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: "#0F172A", fontSize: "1.125rem" }}>
-            Password Reset
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ px: 3, py: 1 }}>
-          <DialogContentText
-            id="password-reset-dialog-description"
-            sx={{ color: "#475569", fontSize: "0.9375rem", lineHeight: 1.5 }}
-          >
-            Please contact the Super Administrator to reset your password.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ p: 2, px: 3 }}>
-          <Button
-            onClick={handleCloseResetDialog}
-            variant="contained"
-            disableElevation
-            autoFocus
-            sx={{
-              backgroundColor: "#2563EB",
-              color: "#FFFFFF",
-              textTransform: "none",
-              fontWeight: 600,
-              borderRadius: "6px",
-              px: 3,
-              py: 0.8,
-              fontSize: "0.875rem",
-              "&:hover": {
-                backgroundColor: "#1D4ED8",
-              },
-            }}
-          >
-            OK
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };
