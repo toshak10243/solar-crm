@@ -116,7 +116,7 @@ const updateSettings = async (data) => {
         backup_frequency=?,
         backup_retention_days=?
 
-        WHERE id=1
+        WHERE id=2
 
         `,
 
@@ -183,7 +183,7 @@ const updateCompanyLogo = async (logo) => {
 
         SET company_logo=?
 
-        WHERE id=1
+        WHERE id=2
 
         `,
 

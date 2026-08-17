@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "409576847821",
+    "project_id": "solar-crm-5858f",
+    "storage_bucket": "solar-crm-5858f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:409576847821:android:12ec77f92979741f71ac84",
+        "android_client_info": {
+          "package_name": "com.example.solar_crm_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCc5mvpIKoQMyfnwTPHkTd-pUCj-4to3Us"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

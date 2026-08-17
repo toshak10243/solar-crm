@@ -1,12 +1,24 @@
 const express = require("express");
 const router = express.Router();
 
-// Destructure the specific middleware function (verifyToken or authMiddleware)
-const { verifyToken } = require("../middleware/authMiddleware"); 
-// 👆 Note: Agar aapke middleware ka naam 'authenticate' ya 'authMiddleware' hai 
-// inside the file, then use: const { authMiddleware } = require(...)
+// ======================================
+// Authentication Middleware
+// ======================================
 
-const { uploadProfile } = require("../middleware/uploadMiddleware");
+const { verifyToken } = require("../middleware/authMiddleware");
+
+// ======================================
+// Upload Middleware
+// ======================================
+
+const {
+    uploadProfile,
+    processProfileImage
+} = require("../middleware/uploadMiddleware");
+
+// ======================================
+// Profile Controller
+// ======================================
 
 const {
     getMyProfile,
@@ -18,15 +30,17 @@ const {
 // ======================================
 // Get Logged In User Profile
 // ======================================
+
 router.get(
     "/",
-    verifyToken, // 👈 Destructured function here
+    verifyToken,
     getMyProfile
 );
 
 // ======================================
 // Update Profile
 // ======================================
+
 router.put(
     "/",
     verifyToken,
@@ -36,6 +50,7 @@ router.put(
 // ======================================
 // Change Password
 // ======================================
+
 router.put(
     "/change-password",
     verifyToken,
@@ -45,11 +60,17 @@ router.put(
 // ======================================
 // Update Profile Photo
 // ======================================
+
 router.put(
     "/photo",
     verifyToken,
     uploadProfile.single("profile_image"),
+    processProfileImage,
     updateProfilePhoto
 );
+
+// ======================================
+// Export Router
+// ======================================
 
 module.exports = router;

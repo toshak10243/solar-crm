@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { logout } from "../../utils/auth";
+// Central AuthContext import
+import { useAuth } from "../../context/AuthContext";
 
 import {
   Box,
@@ -34,7 +35,7 @@ import logo from "../../assets/images/logo.png";
 
 const API_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  "http://localhost:5000";
+  "https://smartsunpower.tech";
 
 // Configurable Navigation Menu Items Array
 const navigationMenuItems = [
@@ -58,37 +59,19 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, sidebarWidth = 280 }) => {
   const navigate = useNavigate();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
-  // Reactive User State for Instant Updates from LocalStorage
-  const [user, setUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null");
-    } catch {
-      return null;
-    }
-  });
+  // React Context Se Real-time User & Logout
+  const { user, logout } = useAuth();
 
-  // Real-time Event Listener for LocalStorage Changes
-  useEffect(() => {
-    const handleStorageChange = () => {
-      try {
-        const updated = JSON.parse(localStorage.getItem("user") || "null");
-        setUser(updated);
-      } catch (e) {
-        console.error("Error reading updated user state in Sidebar", e);
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  const fullName = user?.full_name || "User";
-  const roleName = user?.role_name || "Administrator";
+  const fullName = user?.full_name || user?.name || "User";
+  const roleName = user?.role_name || user?.role || "Administrator";
   const avatarInitials = getInitials(fullName);
 
-  // Avatar Image URL Resolver
-  const getAvatarUrl = (imgPath) => {
-    if (!imgPath || imgPath === "null" || imgPath === "undefined" || imgPath.trim() === "") return null;
+  // 🔴 FIXED: Avatar Image URL Resolver with useMemo (NO Date.now() to prevent blinking)
+  const avatarSrc = useMemo(() => {
+    const imgPath = user?.profile_image;
+    if (!imgPath || imgPath === "null" || imgPath === "undefined" || imgPath.trim() === "") {
+      return null;
+    }
 
     if (imgPath.startsWith("http")) {
       return imgPath;
@@ -104,17 +87,19 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, sidebarWidth = 280 }) => {
       }
     }
 
-    return `${API_BASE_URL}/${cleanPath}?v=${Date.now()}`;
-  };
+    return `${API_BASE_URL}/${cleanPath}`;
+  }, [user?.profile_image]);
 
-  const avatarSrc = getAvatarUrl(user?.profile_image);
-
-  // Handle Confirmed Logout Action
+  // Confirmed Logout Action
   const handleConfirmLogout = () => {
-    logout();
-    sessionStorage.clear();
     setLogoutDialogOpen(false);
-    navigate("/");
+    if (logout) {
+      logout();
+    } else {
+      localStorage.clear();
+      sessionStorage.clear();
+    }
+    navigate("/", { replace: true });
   };
 
   const drawerContent = (
@@ -183,7 +168,7 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, sidebarWidth = 280 }) => {
                   <ListItemButton
                     onClick={() => {
                       navigate(item.path);
-                      if (mobileOpen) handleDrawerToggle();
+                      if (mobileOpen && handleDrawerToggle) handleDrawerToggle();
                     }}
                     sx={{
                       minHeight: 48,
@@ -225,7 +210,7 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, sidebarWidth = 280 }) => {
 
       {/* Bottom Section: User Profile Card & Logout Button */}
       <Box sx={{ p: 2, borderTop: "1px solid rgba(255, 255, 255, 0.08)" }}>
-        {/* User Card with Dynamic Avatar & Online Indicator */}
+        {/* User Card */}
         <Box
           onClick={() => navigate("/profile")}
           sx={{
@@ -258,7 +243,7 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, sidebarWidth = 280 }) => {
             }}
           >
             <Avatar
-              key={avatarSrc || "initials"}
+              key={user?.id || user?.email || avatarInitials}
               src={avatarSrc || undefined}
               imgProps={{
                 onError: (e) => {
@@ -281,7 +266,8 @@ const Sidebar = ({ mobileOpen, handleDrawerToggle, sidebarWidth = 280 }) => {
           <Box sx={{ overflow: "hidden" }}>
             <Typography
               variant="subtitle2"
-              sx={{ fontWeight: 600, fontSize: "0.85rem", color: "#FFFFFF", noWrap: true }}
+              noWrap
+              sx={{ fontWeight: 600, fontSize: "0.85rem", color: "#FFFFFF" }}
             >
               {fullName}
             </Typography>

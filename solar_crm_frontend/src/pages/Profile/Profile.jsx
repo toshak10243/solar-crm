@@ -49,7 +49,7 @@ const { getProfile, updateProfile, changePassword, uploadProfilePhoto } = profil
 
 const API_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  "http://localhost:5000";
+  "https://smartsunpower.tech";
 
 const COLORS = {
   primary: "#005BAC",
@@ -448,14 +448,17 @@ const Profile = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleUpdatePassword = async () => {
+const handleUpdatePassword = async () => {
     if (!validatePassword()) return;
 
     try {
       setUpdatingPassword(true);
+      // Backend safe payload - current_password, old_password & confirm_password sabhi bhejo
       await changePassword({
         current_password: passwordForm.current_password,
+        old_password: passwordForm.current_password,
         new_password: passwordForm.new_password,
+        confirm_password: passwordForm.confirm_password,
       });
 
       showNotification("Password updated successfully!", "success");

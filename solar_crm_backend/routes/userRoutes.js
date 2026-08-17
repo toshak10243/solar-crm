@@ -5,13 +5,23 @@ const {
     createUser,
     getUsers,
     getUserById,
+    getTeamMembers,
     updateUser,
     updateUserStatus,
-    deleteUser
+    deleteUser,
+    updateFcmToken // 👈 Imported FCM controller
 } = require("../controllers/userController");
 
 const { verifyToken } = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/roleMiddleware");
+
+// 🟢 Update FCM Token (Logged-in user ke liye — Admin/Manager/Sales sabhi)
+// NOTE: Isko /:id se upar rakha hai taaki route clash na ho
+router.put(
+    "/fcm-token",
+    verifyToken,
+    updateFcmToken
+);
 
 // Create User
 router.post(
@@ -27,6 +37,14 @@ router.get(
     verifyToken,
     authorizeRoles(1),
     getUsers
+);
+
+// 🔵 Get Manager's Team Members (ROLE_MANAGER = 2)
+router.get(
+    "/team",
+    verifyToken,
+    authorizeRoles(2),
+    getTeamMembers
 );
 
 // Get User By ID

@@ -15,6 +15,7 @@ import {
   Fade,
   Link,
   Snackbar,
+  Paper,
 } from "@mui/material";
 
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
@@ -85,11 +86,18 @@ const ForgotPassword = () => {
     <Box
       sx={{
         height: "100vh",
-        width: "100%",
+        maxHeight: "100vh",
+        width: "100vw",
         display: "flex",
-        backgroundColor: "#0F172A",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundImage: `linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(15, 23, 42, 0.85) 100%), url(${loginBanner})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-        overflow: "hidden",
+        p: 2,
+        overflow: "hidden", // Completely disables scrolling
       }}
     >
       {/* Toast Notification */}
@@ -104,143 +112,160 @@ const ForgotPassword = () => {
         </Alert>
       </Snackbar>
 
-      {/* LEFT Enterprise Section */}
-      <Box
+      {/* OPTIMIZED CENTERED FORGOT PASSWORD CARD */}
+      <Paper
+        elevation={6}
         sx={{
-          flex: 1,
-          display: { xs: "none", md: "flex" },
-          position: "relative",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          p: { md: 4, lg: 6 },
-          overflow: "hidden",
-          backgroundImage: `linear-gradient(135deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.95) 100%), url(${loginBanner})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, zIndex: 2 }}>
-          <Box component="img" src={logo} alt="Enterprise Logo" sx={{ height: { md: 52, lg: 60 }, width: "auto" }} />
-        </Box>
-
-        <Box sx={{ maxWidth: 520, zIndex: 2, my: "auto" }}>
-          <Typography variant="caption" sx={{ color: "#38BDF8", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5 }}>
-            Account Recovery
-          </Typography>
-          <Typography variant="h3" sx={{ color: "#FFFFFF", fontWeight: 700, mt: 1.5, mb: 2, lineHeight: 1.2 }}>
-            Secure, fast, and automated password recovery.
-          </Typography>
-          <Typography variant="body1" sx={{ color: "#94A3B8", lineHeight: 1.6, mb: 4 }}>
-            Enter your registered account identifier to receive an OTP verification code.
-          </Typography>
-        </Box>
-
-        <Box sx={{ zIndex: 2 }}>
-          <Typography variant="caption" sx={{ color: "#64748B" }}>
-            © {new Date().getFullYear()} Solar CRM Inc. All rights reserved.
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* RIGHT Form Section */}
-      <Box
-        sx={{
-          width: { xs: "100%", md: "520px", lg: "580px" },
+          width: "100%",
+          maxWidth: "410px",
           backgroundColor: "#FFFFFF",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          p: { xs: 3, sm: 6, md: 6, lg: 8 },
-          overflowY: "auto",
+          borderRadius: "14px",
+          p: { xs: 2.5, sm: 3 },
+          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3)",
         }}
       >
-        <Box sx={{ display: { xs: "flex", md: "none" }, alignItems: "center", mb: 4 }}>
-          <Box component="img" src={logo} alt="Enterprise Logo" sx={{ height: 48, width: "auto" }} />
+        {/* LOGO */}
+        <Box sx={{ display: "flex", justifyContent: "center", mb: 1.8 }}>
+          <Box
+            component="img"
+            src={logo}
+            alt="Enterprise Logo"
+            sx={{
+              height: 42,
+              width: "auto",
+              objectFit: "contain",
+            }}
+          />
         </Box>
 
-        <Box sx={{ width: "100%", maxWidth: 400, mx: "auto", my: "auto" }}>
-          <Box sx={{ mb: 4 }}>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: "#0F172A", mb: 1 }}>
-              Forgot Password?
+        {/* HEADER */}
+        <Box sx={{ mb: 2, textAlign: "center" }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              color: "#0F172A",
+              letterSpacing: "-0.02em",
+              fontSize: "1.25rem",
+              lineHeight: 1.2,
+            }}
+          >
+            Forgot Password?
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#64748B", fontSize: "0.82rem", mt: 0.4 }}>
+            Enter your details below to receive an OTP.
+          </Typography>
+        </Box>
+
+        {error && (
+          <Fade in={Boolean(error)}>
+            <Alert severity="error" sx={{ mb: 1.8, py: 0.3, px: 1.2, borderRadius: 1.5, fontSize: "0.8rem" }}>
+              {error}
+            </Alert>
+          </Fade>
+        )}
+
+        {/* FORGOT PASSWORD FORM */}
+        <Box component="form" onSubmit={handleSubmit} noValidate>
+          <Box sx={{ mb: 1.8 }}>
+            <Typography
+              component="label"
+              htmlFor="identifier-input"
+              sx={{
+                display: "block",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                color: "#334155",
+                mb: 0.4,
+              }}
+            >
+              Username, Email, or Mobile
             </Typography>
-            <Typography variant="body2" sx={{ color: "#64748B" }}>
-              Enter your Username, Email, or Mobile number below to receive an OTP.
-            </Typography>
-          </Box>
-
-          {error && (
-            <Fade in={Boolean(error)}>
-              <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
-                {error}
-              </Alert>
-            </Fade>
-          )}
-
-          <Box component="form" onSubmit={handleSubmit} noValidate>
-            <Box sx={{ mb: 3 }}>
-              <Typography component="label" sx={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#334155", mb: 1 }}>
-                Username, Email, or Mobile
-              </Typography>
-              <TextField
-                id="identifier-input"
-                fullWidth
-                placeholder="Enter your account identifier"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                disabled={loading}
-                variant="outlined"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <PersonOutlineOutlinedIcon sx={{ color: "#94A3B8", fontSize: 20 }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "8px",
-                    backgroundColor: "#F8FAFC",
-                    "& fieldset": { borderColor: "#E2E8F0" },
-                    "&.Mui-focused fieldset": { borderColor: "#2563EB" },
-                  },
-                }}
-              />
-            </Box>
-
-            <Button
-              type="submit"
+            <TextField
+              id="identifier-input"
               fullWidth
+              placeholder="Enter your account identifier"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               disabled={loading}
-              variant="contained"
-              disableElevation
-              sx={{ py: 1.5, backgroundColor: "#2563EB", fontWeight: 600, borderRadius: "8px", textTransform: "none" }}
-            >
-              {loading ? <CircularProgress size={22} sx={{ color: "#FFFFFF" }} /> : "Send OTP"}
-            </Button>
+              variant="outlined"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PersonOutlineOutlinedIcon sx={{ color: "#94A3B8", fontSize: 19 }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "7px",
+                  backgroundColor: "#F8FAFC",
+                  fontSize: "0.88rem",
+                  "& fieldset": { borderColor: "#E2E8F0" },
+                  "&:hover fieldset": { borderColor: "#CBD5E1" },
+                  "&.Mui-focused": {
+                    backgroundColor: "#FFFFFF",
+                    "& fieldset": { borderColor: "#2563EB" },
+                  },
+                },
+                "& .MuiInputBase-input": { py: 1 },
+              }}
+            />
           </Box>
 
-          <Box sx={{ mt: 3, textAlign: "center" }}>
-            <Link
-              component="button"
-              type="button"
-              onClick={() => navigate("/")}
-              underline="hover"
-              sx={{ fontSize: "0.875rem", fontWeight: 600, color: "#64748B", display: "inline-flex", alignItems: "center", gap: 0.5 }}
-            >
-              <ArrowBackIcon sx={{ fontSize: 16 }} /> Back to Sign In
-            </Link>
-          </Box>
-
-          <Divider sx={{ my: 4, borderColor: "#F1F5F9" }} />
-
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, color: "#64748B" }}>
-            <ShieldOutlinedIcon sx={{ fontSize: 16 }} />
-            <Typography variant="caption" sx={{ fontSize: "0.75rem", fontWeight: 500 }}>
-              Protected by Enterprise Security Policies
-            </Typography>
-          </Box>
+          <Button
+            type="submit"
+            fullWidth
+            disabled={loading}
+            variant="contained"
+            disableElevation
+            sx={{
+              py: 1,
+              backgroundColor: "#2563EB",
+              color: "#FFFFFF",
+              fontSize: "0.88rem",
+              fontWeight: 600,
+              textTransform: "none",
+              borderRadius: "7px",
+              "&:hover": {
+                backgroundColor: "#1D4ED8",
+              },
+            }}
+          >
+            {loading ? <CircularProgress size={20} sx={{ color: "#FFFFFF" }} /> : "Send OTP"}
+          </Button>
         </Box>
-      </Box>
+
+        <Box sx={{ mt: 2, textAlign: "center" }}>
+          <Link
+            component="button"
+            type="button"
+            onClick={() => navigate("/")}
+            underline="hover"
+            sx={{
+              fontSize: "0.8rem",
+              fontWeight: 600,
+              color: "#64748B",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
+              cursor: "pointer",
+            }}
+          >
+            <ArrowBackIcon sx={{ fontSize: 15 }} /> Back to Sign In
+          </Link>
+        </Box>
+
+        <Divider sx={{ my: 1.8, borderColor: "#F1F5F9" }} />
+
+        {/* SECURITY SSO FOOTER */}
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.8, color: "#64748B" }}>
+          <ShieldOutlinedIcon sx={{ fontSize: 14, flexShrink: 0 }} />
+          <Typography variant="caption" sx={{ fontSize: "0.725rem", fontWeight: 500 }}>
+            Protected by Enterprise Security Policies
+          </Typography>
+        </Box>
+      </Paper>
     </Box>
   );
 };

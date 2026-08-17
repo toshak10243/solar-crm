@@ -4,7 +4,10 @@ const router = express.Router();
 
 const { verifyToken } = require("../middleware/authMiddleware");
 
-const { uploadCompanyLogo } = require("../middleware/uploadMiddleware");
+const {
+    uploadCompanyLogo,
+    processCompanyLogo
+} = require("../middleware/uploadMiddleware");
 
 const {
 
@@ -47,15 +50,11 @@ router.put(
 // ======================================
 
 router.put(
-
     "/logo",
-
     verifyToken,
-
     uploadCompanyLogo.single("company_logo"),
-
+    processCompanyLogo,
     updateCompanyLogo
-
 );
 
 module.exports = router;

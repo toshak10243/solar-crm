@@ -80,7 +80,7 @@ const getAllUsers = async (offset, limit, search, role, status) => {
 
     const query = `
         SELECT 
-            u.id, u.full_name, u.username, u.email, u.phone, 
+            u.id, u.full_name, u.username, u.email, u.phone,u.profile_image,
             u.status, u.last_login, u.created_at, 
             r.role_name,
             m.full_name AS manager_name
@@ -284,6 +284,50 @@ const softDeleteUser = async (id) => {
     return result;
 };
 
+// ===============================
+// Get Team Members By Manager ID
+// ===============================
+const getTeamMembersByManager = async (managerId) => {
+    const query = `
+        SELECT 
+            u.id, 
+            u.full_name, 
+            u.username,
+            u.email, 
+            u.phone, 
+            u.status, 
+            u.profile_image,
+            COUNT(l.id) AS total_assigned,
+            SUM(CASE WHEN l.status = 'Won' THEN 1 ELSE 0 END) AS converted,
+            SUM(CASE WHEN l.status = 'Lost' THEN 1 ELSE 0 END) AS lost,
+            SUM(CASE WHEN l.status NOT IN ('Won','Lost','Not Interested') THEN 1 ELSE 0 END) AS in_progress,
+            SUM(CASE WHEN l.next_follow_up_date = CURDATE() 
+                     AND l.status NOT IN ('Won','Lost','Not Interested') 
+                THEN 1 ELSE 0 END) AS today_followups
+        FROM users u
+        LEFT JOIN leads l ON l.assigned_to = u.id AND l.is_deleted = 0
+        WHERE u.manager_id = ? 
+          AND u.role_id = 3 
+          AND u.is_deleted = 0
+        GROUP BY u.id
+        ORDER BY u.id DESC
+    `;
+
+    const [rows] = await db.query(query, [managerId]);
+    return rows;
+};
+
+// ===============================
+// Check If User Is In Manager's Team
+// ===============================
+const isUserInManagerTeam = async (userId, managerId) => {
+    const [rows] = await db.query(
+        `SELECT id FROM users WHERE id = ? AND manager_id = ? AND is_deleted = 0`,
+        [userId, managerId]
+    );
+    return rows.length > 0;
+};
+
 module.exports = {
     checkUsernameExists,
     checkEmailExists,
@@ -297,5 +341,7 @@ module.exports = {
     checkPhoneExistsForUpdate,
     updateUser,
     updateUserStatus,
-    softDeleteUser
+    softDeleteUser,
+    getTeamMembersByManager,
+    isUserInManagerTeam  
 };

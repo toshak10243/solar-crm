@@ -12,3 +12,9 @@ export const updateUserStatus = (id, data) =>
     api.patch(`/users/status/${id}`, data);
 
 export const deleteUser = (id) => api.delete(`/users/${id}`);
+
+// 🟢 Manager Team Fetch Method Add Kar Diya
+export const getTeamMembers = async () => {
+    const response = await api.get("/users/team");
+    return response.data;
+};

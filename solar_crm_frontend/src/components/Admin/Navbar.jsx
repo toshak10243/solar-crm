@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext"; // Agar aap useAuth Context use kar rahe hain
 
 import {
   AppBar,
@@ -8,11 +9,8 @@ import {
   Box,
   IconButton,
   Avatar,
-  Badge,
-  Divider,
   Breadcrumbs,
   Link,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -24,13 +22,12 @@ import {
 // Material UI Icons
 import MenuIcon from "@mui/icons-material/Menu";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
-import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 
 const API_BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-  "http://localhost:5000";
+  "https://smartsunpower.tech";
 
 // Dynamic Breadcrumbs and Page Title Mapping
 const getPageMetadata = (pathname) => {
@@ -46,12 +43,21 @@ const Navbar = ({ handleDrawerToggle, sidebarWidth = 280, navbarHeight = 72 }) =
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Try using AuthContext if available, otherwise fallback to state/localStorage
+  let authUser = null;
+  try {
+    const auth = useAuth();
+    authUser = auth?.user;
+  } catch (e) {
+    // AuthProvider missing fallback
+  }
+
   // Component States
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Reactive User State for Instant Updates from LocalStorage
-  const [user, setUser] = useState(() => {
+  // Local Storage Fallback if Auth Context is not used
+  const [localUser, setLocalUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("user") || "null");
     } catch {
@@ -59,12 +65,16 @@ const Navbar = ({ handleDrawerToggle, sidebarWidth = 280, navbarHeight = 72 }) =
     }
   });
 
-  // Listen to custom/storage events to sync state dynamically
+  const user = authUser || localUser;
+
+  // Sync LocalStorage only if AuthContext isn't available
   useEffect(() => {
+    if (authUser) return;
+
     const handleStorageChange = () => {
       try {
         const updated = JSON.parse(localStorage.getItem("user") || "null");
-        setUser(updated);
+        setLocalUser(updated);
       } catch (e) {
         console.error("Error reading updated user state", e);
       }
@@ -72,7 +82,7 @@ const Navbar = ({ handleDrawerToggle, sidebarWidth = 280, navbarHeight = 72 }) =
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [authUser]);
 
   // Real-time Clock updating every second
   useEffect(() => {
@@ -82,12 +92,15 @@ const Navbar = ({ handleDrawerToggle, sidebarWidth = 280, navbarHeight = 72 }) =
     return () => clearInterval(timer);
   }, []);
 
-  const fullName = user?.full_name || "User";
-  const roleName = user?.role_name || "Administrator";
+  const fullName = user?.full_name || user?.name || "User";
+  const roleName = user?.role_name || user?.role || "Administrator";
 
-  // Avatar Image URL Resolver
-  const getAvatarUrl = (imgPath) => {
-    if (!imgPath || imgPath === "null" || imgPath === "undefined" || imgPath.trim() === "") return null;
+  // Stable Avatar URL Generator (No Date.now() to prevent blinking on clock update)
+  const avatarSrc = useMemo(() => {
+    const imgPath = user?.profile_image;
+    if (!imgPath || imgPath === "null" || imgPath === "undefined" || imgPath.trim() === "") {
+      return null;
+    }
 
     if (imgPath.startsWith("http")) {
       return imgPath;
@@ -103,21 +116,18 @@ const Navbar = ({ handleDrawerToggle, sidebarWidth = 280, navbarHeight = 72 }) =
       }
     }
 
-    return `${API_BASE_URL}/${cleanPath}?v=${Date.now()}`;
-  };
+    return `${API_BASE_URL}/${cleanPath}`;
+  }, [user?.profile_image]);
 
   // Dynamic Avatar Initials Generator
-  const initials = user?.full_name
-    ? user.full_name
+  const initials = fullName
+    ? fullName
         .split(" ")
         .map((word) => word[0])
         .join("")
         .substring(0, 2)
         .toUpperCase()
     : "U";
-
-  // Dynamic Notifications Logic
-  const notificationCount = 3;
 
   const pageMeta = getPageMetadata(location.pathname);
 
@@ -140,8 +150,6 @@ const Navbar = ({ handleDrawerToggle, sidebarWidth = 280, navbarHeight = 72 }) =
     setProfileDialogOpen(false);
     navigate("/profile");
   };
-
-  const avatarSrc = getAvatarUrl(user?.profile_image);
 
   return (
     <>
@@ -254,20 +262,8 @@ const Navbar = ({ handleDrawerToggle, sidebarWidth = 280, navbarHeight = 72 }) =
             </Box>
           </Box>
 
-          {/* RIGHT SECTION: Notification Bell & Interactive Profile Area */}
+          {/* RIGHT SECTION: Interactive Profile Area */}
           <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1.5, sm: 2.5 } }}>
-            {/* Notification Bell */}
-            <Tooltip title="Notifications">
-              <IconButton sx={{ color: "#475569", "&:hover": { backgroundColor: "#F1F5F9" } }}>
-                <Badge badgeContent={notificationCount > 0 ? notificationCount : null} color="error">
-                  <NotificationsNoneOutlinedIcon fontSize="small" />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-
-            <Divider orientation="vertical" flexItem sx={{ height: 26, my: "auto", borderColor: "#E2E8F0" }} />
-
-            {/* Interactive Profile Area */}
             <Box
               onClick={() => setProfileDialogOpen(true)}
               sx={{
@@ -286,7 +282,7 @@ const Navbar = ({ handleDrawerToggle, sidebarWidth = 280, navbarHeight = 72 }) =
               }}
             >
               <Avatar
-                key={avatarSrc || "initials"}
+                key={user?.id || user?.email || "avatar-user"}
                 src={avatarSrc || undefined}
                 imgProps={{
                   onError: (e) => {
