@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../data/models/lead_model.dart';
 import '../../data/sales_lead_service.dart';
+import '../../../../core/constants/indian_states_cities.dart';
 
 // Small additions not present in AppColors (used only for the
 // "Change Status" accent + pipeline "Site Visit / Quotation" tint).
@@ -1449,6 +1450,9 @@ class _LeadCard extends StatelessWidget {
 // NOT collected here — the backend forces assigned_to = self and
 // status = "New Lead" for the Sales role regardless of what is sent,
 // so showing those controls would just be misleading.
+// ======================================================
+// ADD LEAD SHEET (SALES)
+// ======================================================
 class _AddLeadSheet extends StatefulWidget {
   final SalesLeadService leadService;
   const _AddLeadSheet({required this.leadService});
@@ -1466,11 +1470,14 @@ class _AddLeadSheetState extends State<_AddLeadSheet> {
   final _alternateCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
-  final _stateCtrl = TextEditingController();
   final _pincodeCtrl = TextEditingController();
   final _requiredKwCtrl = TextEditingController();
   final _remarkCtrl = TextEditingController();
+
+  // State & City Defaults
+  String _selectedState = 'Rajasthan';
+  String _selectedCity = 'Jaipur';
+  List<String> _availableCities = [];
 
   String _solarRequirement = 'Residential';
   String _interestStatus = 'Pending';
@@ -1486,14 +1493,28 @@ class _AddLeadSheetState extends State<_AddLeadSheet> {
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadCitiesForState(_selectedState);
+  }
+
+  void _loadCitiesForState(String state) {
+    final cities = IndianStatesCities.getCities(state);
+    setState(() {
+      _availableCities = cities;
+      if (!cities.contains(_selectedCity)) {
+        _selectedCity = cities.isNotEmpty ? cities.first : '';
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _customerNameCtrl.dispose();
     _mobileCtrl.dispose();
     _alternateCtrl.dispose();
     _emailCtrl.dispose();
     _addressCtrl.dispose();
-    _cityCtrl.dispose();
-    _stateCtrl.dispose();
     _pincodeCtrl.dispose();
     _requiredKwCtrl.dispose();
     _remarkCtrl.dispose();
@@ -1573,24 +1594,22 @@ class _AddLeadSheetState extends State<_AddLeadSheet> {
     final body = <String, dynamic>{
       'customer_name': _customerNameCtrl.text.trim(),
       'mobile_number': _mobileCtrl.text.trim(),
+      if (_requiredKwCtrl.text.trim().isNotEmpty)
+        'required_kw': num.tryParse(_requiredKwCtrl.text.trim()),
+      'state': _selectedState,
+      'city': _selectedCity,
       if (_alternateCtrl.text.trim().isNotEmpty)
         'alternate_number': _alternateCtrl.text.trim(),
       if (_emailCtrl.text.trim().isNotEmpty) 'email': _emailCtrl.text.trim(),
       if (_addressCtrl.text.trim().isNotEmpty)
         'address': _addressCtrl.text.trim(),
-      if (_cityCtrl.text.trim().isNotEmpty) 'city': _cityCtrl.text.trim(),
-      if (_stateCtrl.text.trim().isNotEmpty) 'state': _stateCtrl.text.trim(),
       if (_pincodeCtrl.text.trim().isNotEmpty)
         'pincode': _pincodeCtrl.text.trim(),
       'solar_requirement': _solarRequirement,
       'interest_status': _interestStatus,
-      if (_requiredKwCtrl.text.trim().isNotEmpty)
-        'required_kw': num.tryParse(_requiredKwCtrl.text.trim()),
       'lead_source': _leadSource,
       'priority': _priority,
       if (_remarkCtrl.text.trim().isNotEmpty) 'remark': _remarkCtrl.text.trim(),
-      // NOTE: no assigned_to / status here — backend forces both for
-      // the Sales role. See SalesLeadService.createLead() doc comment.
     };
 
     final res = await widget.leadService.createLead(body);
@@ -1607,296 +1626,372 @@ class _AddLeadSheetState extends State<_AddLeadSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return ScaffoldMessenger(
       key: _sheetMessengerKey,
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: Theme(
-          data: Theme.of(context).copyWith(
-            textTheme: Theme.of(context).textTheme.apply(
-                  bodyColor: AppColors.textPrimary,
-                  displayColor: AppColors.textPrimary,
-                ),
-            inputDecorationTheme: const InputDecorationTheme(
-              labelStyle: TextStyle(color: AppColors.textSecondary),
-              hintStyle: TextStyle(color: AppColors.textMuted),
-            ),
+        resizeToAvoidBottomInset: false,
+        body: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                children: [
-                  // Drag handle
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10, bottom: 4),
-                    child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(4))),
+          child: Column(
+            children: [
+              // Drag handle
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 4),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Text('Add New Lead',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 17,
-                                  color: AppColors.textPrimary)),
-                        ),
-                        IconButton(
-                          onPressed:
-                              _saving ? null : () => Navigator.pop(context),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                  ),
+                ),
+              ),
 
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Info banner
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.infoSoft,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                  color: AppColors.info.withOpacity(0.25)),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Add New Lead',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 17,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _saving ? null : () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.border),
+
+              // Form Body Scroll
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Info banner
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.infoSoft,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.info.withOpacity(0.25),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.person_outline_rounded,
+                                size: 18, color: AppColors.info),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'This lead will be created with status "New Lead" and assigned to you automatically.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.info,
+                                ),
+                              ),
                             ),
-                            child: Row(
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // 1. Customer Name *
+                      const _FieldLabel('Customer Name *'),
+                      TextField(
+                        controller: _customerNameCtrl,
+                        decoration: _fieldDecoration(
+                          hint: 'Full name',
+                          error: _customerNameError,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 2. Mobile Number *
+                      const _FieldLabel('Mobile Number *'),
+                      TextField(
+                        controller: _mobileCtrl,
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                        buildCounter: (context,
+                                {required currentLength,
+                                required isFocused,
+                                maxLength}) =>
+                            null,
+                        decoration: _fieldDecoration(
+                          hint: '10-digit number',
+                          error: _mobileError,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 3. Required kW
+                      _FieldLabel(_interestStatus == 'Interested'
+                          ? 'Required kW *'
+                          : 'Required kW'),
+                      TextField(
+                        controller: _requiredKwCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: _fieldDecoration(
+                          hint: 'e.g. 5',
+                          error: _requiredKwError,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 4. State & City Dropdowns (Default: Rajasthan / Jaipur)
+                      Row(
+                        children: [
+                          // State Dropdown
+                          Expanded(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.person_outline_rounded,
-                                    size: 18, color: AppColors.info),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'This lead will be created with status "New Lead" and assigned to you automatically.',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.info),
-                                  ),
+                                const _FieldLabel('State'),
+                                DropdownButtonFormField<String>(
+                                  value: _selectedState,
+                                  isExpanded: true,
+                                  decoration: _fieldDecoration(),
+                                  items: IndianStatesCities.states
+                                      .map((s) => DropdownMenuItem(
+                                          value: s,
+                                          child: Text(s,
+                                              overflow: TextOverflow.ellipsis)))
+                                      .toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => _selectedState = val);
+                                      _loadCitiesForState(val);
+                                    }
+                                  },
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(width: 10),
 
-                          const _FieldLabel('Customer Name *'),
-                          TextField(
-                            controller: _customerNameCtrl,
-                            decoration: _fieldDecoration(
-                                hint: 'Full name', error: _customerNameError),
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Mobile Number *'),
-                          TextField(
-                            controller: _mobileCtrl,
-                            keyboardType: TextInputType.phone,
-                            maxLength: 10,
-                            buildCounter: (context,
-                                    {required currentLength,
-                                    required isFocused,
-                                    maxLength}) =>
-                                null,
-                            decoration: _fieldDecoration(
-                                hint: '10-digit number', error: _mobileError),
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Alternate Number'),
-                          TextField(
-                            controller: _alternateCtrl,
-                            keyboardType: TextInputType.phone,
-                            maxLength: 10,
-                            buildCounter: (context,
-                                    {required currentLength,
-                                    required isFocused,
-                                    maxLength}) =>
-                                null,
-                            decoration: _fieldDecoration(hint: 'Optional'),
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Email'),
-                          TextField(
-                            controller: _emailCtrl,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: _fieldDecoration(
-                                hint: 'Optional', error: _emailError),
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Address'),
-                          TextField(
-                            controller: _addressCtrl,
-                            decoration: _fieldDecoration(hint: 'Full address'),
-                          ),
-                          const SizedBox(height: 12),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const _FieldLabel('State'),
-                                    TextField(
-                                      controller: _stateCtrl,
-                                      decoration:
-                                          _fieldDecoration(hint: 'State'),
-                                    ),
-                                  ],
+                          // City Dropdown
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const _FieldLabel('City'),
+                                DropdownButtonFormField<String>(
+                                  value:
+                                      _availableCities.contains(_selectedCity)
+                                          ? _selectedCity
+                                          : (_availableCities.isNotEmpty
+                                              ? _availableCities.first
+                                              : null),
+                                  isExpanded: true,
+                                  decoration: _fieldDecoration(),
+                                  items: _availableCities
+                                      .map((c) => DropdownMenuItem(
+                                          value: c,
+                                          child: Text(c,
+                                              overflow: TextOverflow.ellipsis)))
+                                      .toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => _selectedCity = val);
+                                    }
+                                  },
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const _FieldLabel('City'),
-                                    TextField(
-                                      controller: _cityCtrl,
-                                      decoration:
-                                          _fieldDecoration(hint: 'City'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Pincode'),
-                          TextField(
-                            controller: _pincodeCtrl,
-                            keyboardType: TextInputType.number,
-                            maxLength: 6,
-                            buildCounter: (context,
-                                    {required currentLength,
-                                    required isFocused,
-                                    maxLength}) =>
-                                null,
-                            decoration: _fieldDecoration(hint: 'Pincode'),
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Solar Requirement'),
-                          DropdownButtonFormField<String>(
-                            value: _solarRequirement,
-                            isExpanded: true,
-                            decoration: _fieldDecoration(),
-                            items: kSolarRequirementOptions
-                                .map((o) =>
-                                    DropdownMenuItem(value: o, child: Text(o)))
-                                .toList(),
-                            onChanged: (v) => setState(
-                                () => _solarRequirement = v ?? 'Residential'),
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Interest Status'),
-                          DropdownButtonFormField<String>(
-                            value: _interestStatus,
-                            isExpanded: true,
-                            decoration: _fieldDecoration(),
-                            items: kInterestOptions
-                                .map((o) =>
-                                    DropdownMenuItem(value: o, child: Text(o)))
-                                .toList(),
-                            onChanged: (v) => setState(
-                                () => _interestStatus = v ?? 'Pending'),
-                          ),
-                          const SizedBox(height: 12),
-
-                          _FieldLabel(_interestStatus == 'Interested'
-                              ? 'Required kW *'
-                              : 'Required kW'),
-                          TextField(
-                            controller: _requiredKwCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: _fieldDecoration(
-                                hint: 'e.g. 5', error: _requiredKwError),
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Lead Source'),
-                          DropdownButtonFormField<String>(
-                            value: _leadSource,
-                            isExpanded: true,
-                            decoration: _fieldDecoration(),
-                            items: kLeadSourceOptions
-                                .map((o) =>
-                                    DropdownMenuItem(value: o, child: Text(o)))
-                                .toList(),
-                            onChanged: (v) =>
-                                setState(() => _leadSource = v ?? 'Website'),
-                          ),
-                          const SizedBox(height: 12),
-
-                          const _FieldLabel('Priority'),
-                          DropdownButtonFormField<String>(
-                            value: _priority,
-                            isExpanded: true,
-                            decoration: _fieldDecoration(),
-                            items: kPriorityOptions
-                                .map((o) =>
-                                    DropdownMenuItem(value: o, child: Text(o)))
-                                .toList(),
-                            onChanged: (v) =>
-                                setState(() => _priority = v ?? 'Medium'),
-                          ),
-                          const SizedBox(height: 12),
-
-                          _FieldLabel(_interestStatus == 'Not Interested'
-                              ? 'Remark *'
-                              : 'Remark'),
-                          TextField(
-                            controller: _remarkCtrl,
-                            maxLines: 3,
-                            decoration: _fieldDecoration(
-                                hint: 'Any notes...', error: _remarkError),
-                          ),
-                          const SizedBox(height: 20),
-
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _saving ? null : _submit,
-                              style: _primaryBtnStyle(),
-                              child: _saving
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2, color: Colors.white))
-                                  : const Text('Create Lead'),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 14),
+
+                      // 5. Alternate Number
+                      const _FieldLabel('Alternate Number'),
+                      TextField(
+                        controller: _alternateCtrl,
+                        keyboardType: TextInputType.phone,
+                        maxLength: 10,
+                        buildCounter: (context,
+                                {required currentLength,
+                                required isFocused,
+                                maxLength}) =>
+                            null,
+                        decoration: _fieldDecoration(hint: 'Optional'),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 6. Email
+                      const _FieldLabel('Email'),
+                      TextField(
+                        controller: _emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: _fieldDecoration(
+                          hint: 'Optional',
+                          error: _emailError,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 7. Address
+                      const _FieldLabel('Address'),
+                      TextField(
+                        controller: _addressCtrl,
+                        decoration: _fieldDecoration(hint: 'Full address'),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 8. Pincode
+                      const _FieldLabel('Pincode'),
+                      TextField(
+                        controller: _pincodeCtrl,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        buildCounter: (context,
+                                {required currentLength,
+                                required isFocused,
+                                maxLength}) =>
+                            null,
+                        decoration: _fieldDecoration(hint: 'Pincode'),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 9. Solar Requirement
+                      const _FieldLabel('Solar Requirement'),
+                      DropdownButtonFormField<String>(
+                        value: _solarRequirement,
+                        isExpanded: true,
+                        decoration: _fieldDecoration(),
+                        items: kSolarRequirementOptions
+                            .map((o) =>
+                                DropdownMenuItem(value: o, child: Text(o)))
+                            .toList(),
+                        onChanged: (v) => setState(
+                            () => _solarRequirement = v ?? 'Residential'),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 10. Interest Status
+                      const _FieldLabel('Interest Status'),
+                      DropdownButtonFormField<String>(
+                        value: _interestStatus,
+                        isExpanded: true,
+                        decoration: _fieldDecoration(),
+                        items: kInterestOptions
+                            .map((o) =>
+                                DropdownMenuItem(value: o, child: Text(o)))
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => _interestStatus = v ?? 'Pending'),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 11. Lead Source
+                      const _FieldLabel('Lead Source'),
+                      DropdownButtonFormField<String>(
+                        value: _leadSource,
+                        isExpanded: true,
+                        decoration: _fieldDecoration(),
+                        items: kLeadSourceOptions
+                            .map((o) =>
+                                DropdownMenuItem(value: o, child: Text(o)))
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => _leadSource = v ?? 'Website'),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 12. Priority
+                      const _FieldLabel('Priority'),
+                      DropdownButtonFormField<String>(
+                        value: _priority,
+                        isExpanded: true,
+                        decoration: _fieldDecoration(),
+                        items: kPriorityOptions
+                            .map((o) =>
+                                DropdownMenuItem(value: o, child: Text(o)))
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => _priority = v ?? 'Medium'),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 13. Remark
+                      _FieldLabel(_interestStatus == 'Not Interested'
+                          ? 'Remark *'
+                          : 'Remark'),
+                      TextField(
+                        controller: _remarkCtrl,
+                        maxLines: 3,
+                        decoration: _fieldDecoration(
+                          hint: 'Any notes...',
+                          error: _remarkError,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+
+              // Fixed Bottom Submit Button (3-Button Navigation Bar Safe)
+              Container(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  10,
+                  20,
+                  bottomInset > 0 ? bottomInset + 10 : bottomPadding + 12,
+                ),
+                decoration: const BoxDecoration(
+                  color: AppColors.card,
+                  border: Border(
+                    top: BorderSide(color: AppColors.border),
+                  ),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: _saving ? null : _submit,
+                    style: _primaryBtnStyle(),
+                    child: _saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Create Lead',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -102,17 +102,21 @@ class ProfileService {
     }
   }
 
-  // 4. Change Password
+  // 4. Change Password (Updated with fallbacks)
   Future<Map<String, dynamic>> changePassword({
     required String currentPassword,
     required String newPassword,
+    String? confirmPassword,
   }) async {
     try {
       final response = await _apiClient.dio.put(
         ApiEndpoints.changePassword,
         data: {
           'current_password': currentPassword,
+          'old_password': currentPassword, // 👈 Added fallback
           'new_password': newPassword,
+          'confirm_password':
+              confirmPassword ?? newPassword, // 👈 Added fallback
         },
       );
       return {

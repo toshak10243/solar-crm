@@ -436,6 +436,8 @@ class _SalesProfileScreenState extends ConsumerState<SalesProfileScreen> {
     final result = await _profileService.changePassword(
       currentPassword: _currentPasswordController.text,
       newPassword: _newPasswordController.text,
+      confirmPassword:
+          _confirmPasswordController.text, // 👈 Yeh line add karni hai
     );
 
     if (!mounted) return;

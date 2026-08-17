@@ -40,8 +40,8 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
   final _quotationCtrl = TextEditingController();
   final _remarkCtrl = TextEditingController();
 
-  String? _selectedState;
-  String? _selectedCity;
+  String _selectedState = 'Rajasthan';
+  String _selectedCity = 'Jaipur';
   String _selectedSolarReq = 'Residential';
   String _selectedInterest = 'Pending';
   String _selectedSource = 'Website';
@@ -221,7 +221,6 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
     }
   }
 
-  // ---- Validation (mirrors the React web version) ----
   String? _validateBeforeSave() {
     if (_customerNameCtrl.text.trim().isEmpty) {
       return 'Customer Name is required!';
@@ -264,14 +263,15 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
       _remarkCtrl.text = lead['remark']?.toString() ?? '';
 
       final rawState = lead['state']?.toString();
-      _selectedState =
-          IndianStatesCities.states.contains(rawState) ? rawState : 'Rajasthan';
+      _selectedState = IndianStatesCities.states.contains(rawState)
+          ? rawState!
+          : 'Rajasthan';
 
       final availableCities = IndianStatesCities.getCities(_selectedState);
       final rawCity = lead['city']?.toString();
       _selectedCity = availableCities.contains(rawCity)
-          ? rawCity
-          : (availableCities.isNotEmpty ? availableCities.first : null);
+          ? rawCity!
+          : (availableCities.isNotEmpty ? availableCities.first : 'Jaipur');
 
       _selectedSolarReq =
           lead['solar_requirement']?.toString() ?? 'Residential';
@@ -299,7 +299,9 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
 
       _selectedState = 'Rajasthan';
       final cities = IndianStatesCities.getCities('Rajasthan');
-      _selectedCity = cities.isNotEmpty ? cities.first : 'Jaipur';
+      _selectedCity = cities.contains('Jaipur')
+          ? 'Jaipur'
+          : (cities.isNotEmpty ? cities.first : 'Jaipur');
 
       _selectedSolarReq = 'Residential';
       _selectedInterest = 'Pending';
@@ -321,6 +323,8 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setSheetState) {
           final citiesList = IndianStatesCities.getCities(_selectedState);
+          final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+          final bottomPadding = MediaQuery.of(context).padding.bottom;
 
           return Container(
             decoration: const BoxDecoration(
@@ -331,14 +335,16 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
               heightFactor: 0.92,
               child: Column(
                 children: [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Container(
-                      width: 36,
-                      height: 4,
-                      decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: BorderRadius.circular(2))),
-                  const SizedBox(height: 12),
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 12),
@@ -364,6 +370,8 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                       ],
                     ),
                   ),
+
+                  // SCROLLABLE FORM FIELDS IN ORDER
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -402,7 +410,7 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                                           color: AppColors.textPrimary)),
                                   const SizedBox(height: 4),
                                   const Text(
-                                    'You can still proceed — this could be a genuine case (e.g. husband & wife sharing a number).',
+                                    'You can still proceed — this could be a genuine case (e.g. family sharing a number).',
                                     style: TextStyle(
                                         fontSize: 10.5,
                                         fontStyle: FontStyle.italic,
@@ -414,17 +422,21 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                             const SizedBox(height: 14),
                           ],
 
-                          // 1. CONTACT INFO
-                          const Text('1. CONTACT INFORMATION',
+                          // 1. PRIMARY DETAILS
+                          const Text('1. PRIMARY DETAILS',
                               style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.primaryDark,
                                   letterSpacing: 0.5)),
                           const SizedBox(height: 8),
+
+                          // Customer Name
                           _buildCompactTextField(
                               _customerNameCtrl, 'CUSTOMER NAME *'),
                           const SizedBox(height: 8),
+
+                          // Mobile Number
                           _buildCompactTextField(
                               _mobileCtrl, '10-DIGIT MOBILE NUMBER *',
                               isPhone: true, onChanged: (val) {
@@ -432,6 +444,105 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                             setSheetState(() {});
                           }),
                           const SizedBox(height: 8),
+
+                          // Required kW
+                          _buildCompactTextField(
+                            _requiredKwCtrl,
+                            _selectedInterest == 'Interested'
+                                ? 'REQUIRED KW *'
+                                : 'REQUIRED KW',
+                            isPhone: true,
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Assign To
+                          DropdownButtonFormField<String>(
+                            value: _selectedAssignTo?.toString(),
+                            isDense: true,
+                            isExpanded: true,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600),
+                            decoration: const InputDecoration(
+                                labelText: 'ASSIGN TO',
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                                filled: true,
+                                fillColor: AppColors.bg),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                  value: null,
+                                  child: Text('Unassigned',
+                                      style: TextStyle(fontSize: 12))),
+                              ..._teamMembers
+                                  .map<DropdownMenuItem<String>>((m) {
+                                return DropdownMenuItem<String>(
+                                  value: m['id']?.toString(),
+                                  child: Text(
+                                      m['full_name']?.toString() ?? 'Rep',
+                                      style: const TextStyle(fontSize: 12),
+                                      overflow: TextOverflow.ellipsis),
+                                );
+                              }).toList(),
+                            ],
+                            onChanged: (val) =>
+                                setSheetState(() => _selectedAssignTo = val),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // 2. LOCATION & ADDRESS (Default: Rajasthan & Jaipur)
+                          const Text('2. LOCATION & ADDRESS',
+                              style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryDark,
+                                  letterSpacing: 0.5)),
+                          const SizedBox(height: 8),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildDropdownField<String>(
+                                  label: 'STATE',
+                                  value: _selectedState,
+                                  items: IndianStatesCities.states,
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setSheetState(() {
+                                        _selectedState = val;
+                                        final newCities =
+                                            IndianStatesCities.getCities(val);
+                                        _selectedCity = newCities.isNotEmpty
+                                            ? newCities.first
+                                            : 'Jaipur';
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildDropdownField<String>(
+                                  label: 'CITY',
+                                  value: citiesList.contains(_selectedCity)
+                                      ? _selectedCity
+                                      : (citiesList.isNotEmpty
+                                          ? citiesList.first
+                                          : 'Jaipur'),
+                                  items: citiesList,
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setSheetState(() => _selectedCity = val);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+
                           Row(
                             children: [
                               Expanded(
@@ -444,61 +555,16 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                                       _emailCtrl, 'EMAIL ADDRESS')),
                             ],
                           ),
-
-                          const SizedBox(height: 16),
-
-                          // 2. LOCATION & ADDRESS
-                          const Text('2. LOCATION & ADDRESS',
-                              style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryDark,
-                                  letterSpacing: 0.5)),
                           const SizedBox(height: 8),
+
                           _buildCompactTextField(_addressCtrl, 'FULL ADDRESS'),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildDropdownField<String>(
-                                  label: 'STATE',
-                                  value: _selectedState,
-                                  items: IndianStatesCities.states,
-                                  onChanged: (val) {
-                                    setSheetState(() {
-                                      _selectedState = val;
-                                      final newCities =
-                                          IndianStatesCities.getCities(val);
-                                      _selectedCity = newCities.isNotEmpty
-                                          ? newCities.first
-                                          : null;
-                                    });
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _buildDropdownField<String>(
-                                  label: 'CITY',
-                                  value: citiesList.contains(_selectedCity)
-                                      ? _selectedCity
-                                      : (citiesList.isNotEmpty
-                                          ? citiesList.first
-                                          : null),
-                                  items: citiesList,
-                                  onChanged: (val) =>
-                                      setSheetState(() => _selectedCity = val),
-                                ),
-                              ),
-                            ],
-                          ),
                           const SizedBox(height: 8),
                           _buildCompactTextField(_pincodeCtrl, 'PINCODE',
                               isPhone: true),
 
                           const SizedBox(height: 16),
 
-                          // 3. SOLAR REQUIREMENT
+                          // 3. PIPELINE & DATES
                           const Text('3. SOLAR REQUIREMENT & PIPELINE',
                               style: TextStyle(
                                   fontSize: 10.5,
@@ -506,6 +572,7 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                                   color: AppColors.primaryDark,
                                   letterSpacing: 0.5)),
                           const SizedBox(height: 8),
+
                           Row(
                             children: [
                               Expanded(
@@ -530,35 +597,7 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildCompactTextField(
-                                  _requiredKwCtrl,
-                                  _selectedInterest == 'Interested'
-                                      ? 'REQUIRED KW *'
-                                      : 'REQUIRED KW',
-                                  isPhone: true,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: _buildCompactTextField(
-                                      _quotationCtrl, 'QUOTATION AMOUNT (₹)',
-                                      isPhone: true)),
-                            ],
-                          ),
 
-                          const SizedBox(height: 16),
-
-                          // 4. SOURCE, STATUS & DATES
-                          const Text('4. SOURCE, STATUS & DATES',
-                              style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryDark,
-                                  letterSpacing: 0.5)),
-                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
@@ -583,6 +622,7 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
+
                           Row(
                             children: [
                               Expanded(
@@ -599,40 +639,9 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedAssignTo?.toString(),
-                                  isDense: true,
-                                  isExpanded: true,
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.w600),
-                                  decoration: const InputDecoration(
-                                      labelText: 'ASSIGN TO',
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 8),
-                                      filled: true,
-                                      fillColor: AppColors.bg),
-                                  items: [
-                                    const DropdownMenuItem<String>(
-                                        value: null,
-                                        child: Text('Unassigned',
-                                            style: TextStyle(fontSize: 12))),
-                                    ..._teamMembers
-                                        .map<DropdownMenuItem<String>>((m) {
-                                      return DropdownMenuItem<String>(
-                                        value: m['id']?.toString(),
-                                        child: Text(
-                                            m['full_name']?.toString() ?? 'Rep',
-                                            style:
-                                                const TextStyle(fontSize: 12),
-                                            overflow: TextOverflow.ellipsis),
-                                      );
-                                    }).toList(),
-                                  ],
-                                  onChanged: (val) => setSheetState(
-                                      () => _selectedAssignTo = val),
-                                ),
+                                child: _buildCompactTextField(
+                                    _quotationCtrl, 'QUOTATION AMOUNT (₹)',
+                                    isPhone: true),
                               ),
                             ],
                           ),
@@ -653,9 +662,10 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                                             const Duration(days: 365)),
                                         lastDate: DateTime.now()
                                             .add(const Duration(days: 365)));
-                                    if (d != null)
+                                    if (d != null) {
                                       setSheetState(
                                           () => _selectedNextFollowupDate = d);
+                                    }
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -689,9 +699,10 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                                             const Duration(days: 365)),
                                         lastDate: DateTime.now()
                                             .add(const Duration(days: 365)));
-                                    if (d != null)
+                                    if (d != null) {
                                       setSheetState(
                                           () => _selectedSiteVisitDate = d);
+                                    }
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -714,8 +725,8 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 8),
+
                           _buildCompactTextField(
                             _remarkCtrl,
                             _selectedInterest == 'Not Interested'
@@ -723,100 +734,109 @@ class _ManagerLeadsScreenState extends State<ManagerLeadsScreen> {
                                 : 'INITIAL REMARK / NOTES',
                             maxLines: 2,
                           ),
-
-                          const SizedBox(height: 20),
-
-                          SizedBox(
-                            width: double.infinity,
-                            height: 44,
-                            child: ElevatedButton(
-                              onPressed: _isSavingLead
-                                  ? null
-                                  : () async {
-                                      final validationError =
-                                          _validateBeforeSave();
-                                      if (validationError != null) {
-                                        _showNotification(validationError,
-                                            isError: true);
-                                        return;
-                                      }
-
-                                      setSheetState(() => _isSavingLead = true);
-
-                                      final payload = {
-                                        'customer_name':
-                                            _customerNameCtrl.text.trim(),
-                                        'mobile_number':
-                                            _mobileCtrl.text.trim(),
-                                        'alternate_number':
-                                            _altMobileCtrl.text.trim(),
-                                        'email': _emailCtrl.text.trim(),
-                                        'address': _addressCtrl.text.trim(),
-                                        'city': _selectedCity,
-                                        'state': _selectedState,
-                                        'pincode': _pincodeCtrl.text.trim(),
-                                        'solar_requirement': _selectedSolarReq,
-                                        'interest_status': _selectedInterest,
-                                        'required_kw':
-                                            _requiredKwCtrl.text.trim(),
-                                        'remark': _remarkCtrl.text.trim(),
-                                        'lead_source': _selectedSource,
-                                        'priority': _selectedPriority,
-                                        'status': _selectedStatus,
-                                        'assigned_to': _selectedAssignTo,
-                                        'next_follow_up_date':
-                                            _selectedNextFollowupDate
-                                                ?.toIso8601String()
-                                                .split('T')[0],
-                                        'site_visit_date':
-                                            _selectedSiteVisitDate
-                                                ?.toIso8601String()
-                                                .split('T')[0],
-                                        'quotation_amount':
-                                            _quotationCtrl.text.trim(),
-                                      };
-
-                                      Map<String, dynamic> res;
-                                      if (_editingLeadId != null) {
-                                        res = await _service.updateLead(
-                                            _editingLeadId, payload);
-                                      } else {
-                                        res =
-                                            await _service.createLead(payload);
-                                      }
-
-                                      setSheetState(
-                                          () => _isSavingLead = false);
-
-                                      if (mounted) {
-                                        Navigator.pop(ctx);
-                                        _showNotification(
-                                            res['message']?.toString() ??
-                                                'Action completed!',
-                                            isError: res['success'] != true);
-                                        _fetchData();
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0),
-                              child: _isSavingLead
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                          color: Colors.white, strokeWidth: 2))
-                                  : Text(
-                                      _editingLeadId == null
-                                          ? 'Create Lead'
-                                          : 'Update Lead',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13.5)),
-                            ),
-                          ),
+                          const SizedBox(height: 10),
                         ],
+                      ),
+                    ),
+                  ),
+
+                  // 3-BUTTON BAR SAFE FIXED SUBMIT CONTAINER
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      10,
+                      16,
+                      bottomInset > 0 ? bottomInset + 10 : bottomPadding + 14,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.card,
+                      border: Border(
+                        top: BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        onPressed: _isSavingLead
+                            ? null
+                            : () async {
+                                final validationError = _validateBeforeSave();
+                                if (validationError != null) {
+                                  _showNotification(validationError,
+                                      isError: true);
+                                  return;
+                                }
+
+                                setSheetState(() => _isSavingLead = true);
+
+                                final payload = {
+                                  'customer_name':
+                                      _customerNameCtrl.text.trim(),
+                                  'mobile_number': _mobileCtrl.text.trim(),
+                                  'alternate_number':
+                                      _altMobileCtrl.text.trim(),
+                                  'email': _emailCtrl.text.trim(),
+                                  'address': _addressCtrl.text.trim(),
+                                  'city': _selectedCity,
+                                  'state': _selectedState,
+                                  'pincode': _pincodeCtrl.text.trim(),
+                                  'solar_requirement': _selectedSolarReq,
+                                  'interest_status': _selectedInterest,
+                                  'required_kw': _requiredKwCtrl.text.trim(),
+                                  'remark': _remarkCtrl.text.trim(),
+                                  'lead_source': _selectedSource,
+                                  'priority': _selectedPriority,
+                                  'status': _selectedStatus,
+                                  'assigned_to': _selectedAssignTo,
+                                  'next_follow_up_date':
+                                      _selectedNextFollowupDate
+                                          ?.toIso8601String()
+                                          .split('T')[0],
+                                  'site_visit_date': _selectedSiteVisitDate
+                                      ?.toIso8601String()
+                                      .split('T')[0],
+                                  'quotation_amount':
+                                      _quotationCtrl.text.trim(),
+                                };
+
+                                Map<String, dynamic> res;
+                                if (_editingLeadId != null) {
+                                  res = await _service.updateLead(
+                                      _editingLeadId, payload);
+                                } else {
+                                  res = await _service.createLead(payload);
+                                }
+
+                                setSheetState(() => _isSavingLead = false);
+
+                                if (mounted) {
+                                  Navigator.pop(ctx);
+                                  _showNotification(
+                                      res['message']?.toString() ??
+                                          'Action completed!',
+                                      isError: res['success'] != true);
+                                  _fetchData();
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            elevation: 0),
+                        child: _isSavingLead
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : Text(
+                                _editingLeadId == null
+                                    ? 'Create Lead'
+                                    : 'Update Lead',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 14)),
                       ),
                     ),
                   ),

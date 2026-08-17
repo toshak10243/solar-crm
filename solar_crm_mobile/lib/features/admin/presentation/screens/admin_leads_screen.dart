@@ -20,8 +20,8 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
   List<dynamic> _kpiSnapshot = [];
   List<dynamic> _usersList = [];
 
-  bool _isLoading = true; // full-screen spinner — first load only
-  bool _isRefreshing = false; // slim inline indicator for later fetches
+  bool _isLoading = true;
+  bool _isRefreshing = false;
   bool _hasLoadedOnce = false;
   bool _isKpiLoading = false;
   String? _errorMessage;
@@ -82,8 +82,8 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
   String _leadSource = 'Website';
   String _priority = 'Medium';
   String _status = 'New Lead';
-  String? _selectedState;
-  String? _selectedCity;
+  String _selectedState = 'Rajasthan';
+  String _selectedCity = 'Jaipur';
   dynamic _selectedAssignedUser;
   DateTime? _selectedNextFollowup;
   DateTime? _selectedSiteVisit;
@@ -91,23 +91,10 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
   List<String> _availableCities = [];
   bool _isSavingLead = false;
 
-  // Follow-up Drawer State
-  dynamic _activeFollowupLead;
-  final _followupNoteCtrl = TextEditingController();
-  String _followupType = 'Call';
-  String _statusAfterFollowup = '';
-  DateTime? _nextFollowupDate;
-  bool _isSavingFollowup = false;
-
-  // Assign Drawer State
-  dynamic _activeAssignLead;
-  dynamic _newAssigneeId;
-  bool _isAssigning = false;
-
-  // Screen-local accent colours (kept off pure/bright yellow everywhere)
-  static const Color _accentAmber = Color(0xFFB45309); // deep amber/brown
+  // Screen-local accent colours
+  static const Color _accentAmber = Color(0xFFB45309);
   static const Color _accentAmberSoft = Color(0xFFFDF1DF);
-  static const Color _accentTeal = Color(0xFF0E7490); // for WhatsApp/info-ish
+  static const Color _accentTeal = Color(0xFF0E7490);
   static const Color _accentTealSoft = Color(0xFFE0F2F4);
 
   @override
@@ -130,17 +117,11 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
     _requiredKwCtrl.dispose();
     _quotationAmtCtrl.dispose();
     _remarkCtrl.dispose();
-    _followupNoteCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _fetchLeads() async {
     setState(() {
-      // Only the very first load shows the big full-screen spinner. Every
-      // later call (typing in search, changing a filter) keeps the KPI
-      // cards / filter bar / existing list mounted and just shows a thin
-      // progress bar — this is what stops the whole screen from
-      // flashing/reloading on every keystroke.
       if (!_hasLoadedOnce) {
         _isLoading = true;
       } else {
@@ -182,16 +163,12 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
     }
   }
 
-  // Debounced search — waits for the user to pause typing before hitting
-  // the API instead of firing a request (and a full rebuild) on every
-  // single keystroke, which is what was causing the whole screen to
-  // reload while typing.
   void _onSearchChanged(String _) {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 400), () {
       if (mounted) _fetchLeads();
     });
-    setState(() {}); // just to refresh the clear (x) icon immediately
+    setState(() {});
   }
 
   Future<void> _fetchUsers() async {
@@ -234,18 +211,18 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
       filled: true,
       fillColor: AppColors.bg,
       suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
     );
   }
@@ -270,14 +247,16 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
       _status = lead['status']?.toString() ?? 'New Lead';
       _selectedAssignedUser = lead['assigned_to']?.toString();
 
-      _selectedState = lead['state']?.toString();
-      if (_selectedState != null &&
-          IndianStatesCities.data.containsKey(_selectedState)) {
-        _availableCities = IndianStatesCities.data[_selectedState] ?? [];
-      } else {
-        _availableCities = [];
-      }
-      _selectedCity = lead['city']?.toString();
+      final rawState = lead['state']?.toString();
+      _selectedState = IndianStatesCities.states.contains(rawState)
+          ? rawState!
+          : 'Rajasthan';
+
+      _availableCities = IndianStatesCities.getCities(_selectedState);
+      final rawCity = lead['city']?.toString();
+      _selectedCity = _availableCities.contains(rawCity)
+          ? rawCity!
+          : (_availableCities.isNotEmpty ? _availableCities.first : 'Jaipur');
 
       _selectedNextFollowup =
           DateTime.tryParse(lead['next_follow_up_date']?.toString() ?? '');
@@ -300,9 +279,11 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
       _leadSource = 'Website';
       _priority = 'Medium';
       _status = 'New Lead';
-      _selectedState = null;
-      _selectedCity = null;
-      _availableCities = [];
+      _selectedState = 'Rajasthan';
+      _availableCities = IndianStatesCities.getCities('Rajasthan');
+      _selectedCity = _availableCities.contains('Jaipur')
+          ? 'Jaipur'
+          : (_availableCities.isNotEmpty ? _availableCities.first : 'Jaipur');
       _selectedAssignedUser = null;
       _selectedNextFollowup = null;
       _selectedSiteVisit = null;
@@ -313,394 +294,564 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) => Container(
-          decoration: const BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: FractionallySizedBox(
-            heightFactor: 0.92,
-            child: Column(
-              children: [
-                const SizedBox(height: 12),
-                Container(
+        builder: (context, setSheetState) {
+          final citiesList = IndianStatesCities.getCities(_selectedState);
+          final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+          final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+          return Container(
+            decoration: const BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: FractionallySizedBox(
+              heightFactor: 0.92,
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
                     width: 36,
                     height: 4,
                     decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(2))),
-                const SizedBox(height: 12),
-
-                // Header
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primaryDark, AppColors.primary],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(24)),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
+                  const SizedBox(height: 10),
+
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.primaryDark, AppColors.primary],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
                                 _editingLeadId == null
                                     ? Icons.add_business_rounded
                                     : Icons.edit_rounded,
                                 color: Colors.white,
-                                size: 18),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            _editingLeadId == null
-                                ? 'Create Master Solar Lead'
-                                : 'Edit Lead Details',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                                color: Colors.white),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded,
-                            color: Colors.white),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Body
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('CUSTOMER INFORMATION',
-                            style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primaryDark,
-                                letterSpacing: 0.5)),
-                        const SizedBox(height: 10),
-                        TextField(
-                            controller: _customerNameCtrl,
-                            decoration: _fieldDecoration('CUSTOMER NAME *')),
-                        const SizedBox(height: 12),
-                        TextField(
-                            controller: _mobileCtrl,
-                            keyboardType: TextInputType.phone,
-                            decoration: _fieldDecoration('MOBILE NUMBER *')),
-                        const SizedBox(height: 12),
-                        TextField(
-                            controller: _altMobileCtrl,
-                            keyboardType: TextInputType.phone,
-                            decoration: _fieldDecoration('ALTERNATE NUMBER')),
-                        const SizedBox(height: 12),
-                        TextField(
-                            controller: _emailCtrl,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: _fieldDecoration('EMAIL ADDRESS')),
-                        const SizedBox(height: 12),
-                        TextField(
-                            controller: _addressCtrl,
-                            decoration: _fieldDecoration('FULL ADDRESS')),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _selectedState,
-                                isExpanded: true,
-                                decoration: _fieldDecoration('STATE'),
-                                items: IndianStatesCities.states
-                                    .map((s) => DropdownMenuItem(
-                                        value: s, child: Text(s)))
-                                    .toList(),
-                                onChanged: (val) {
-                                  setSheetState(() {
-                                    _selectedState = val;
-                                    _availableCities =
-                                        IndianStatesCities.data[val] ?? [];
-                                    _selectedCity = null;
-                                  });
-                                },
+                                size: 18,
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _selectedCity,
-                                isExpanded: true,
-                                decoration: _fieldDecoration('CITY'),
-                                items: _availableCities
-                                    .map((c) => DropdownMenuItem(
-                                        value: c, child: Text(c)))
-                                    .toList(),
-                                onChanged: (val) =>
-                                    setSheetState(() => _selectedCity = val),
-                              ),
+                            Text(
+                              _editingLeadId == null
+                                  ? 'Create Master Solar Lead'
+                                  : 'Edit Lead Details',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                  color: Colors.white),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        TextField(
-                            controller: _pincodeCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: _fieldDecoration('PINCODE')),
-                        const SizedBox(height: 22),
-                        const Text('SOLAR REQUIREMENT DETAILS',
-                            style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primaryDark,
-                                letterSpacing: 0.5)),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _solarReq,
-                                isExpanded: true,
-                                decoration: _fieldDecoration('TYPE'),
-                                items: _solarRequirementOptions
-                                    .map((s) => DropdownMenuItem(
-                                        value: s, child: Text(s)))
-                                    .toList(),
-                                onChanged: (val) =>
-                                    setSheetState(() => _solarReq = val!),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _interestStatus,
-                                isExpanded: true,
-                                decoration: _fieldDecoration('INTEREST STATUS'),
-                                items: _interestOptions
-                                    .map((s) => DropdownMenuItem(
-                                        value: s, child: Text(s)))
-                                    .toList(),
-                                onChanged: (val) =>
-                                    setSheetState(() => _interestStatus = val!),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                  controller: _requiredKwCtrl,
-                                  keyboardType: TextInputType.number,
-                                  decoration: _fieldDecoration('REQUIRED kW')),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                  controller: _quotationAmtCtrl,
-                                  keyboardType: TextInputType.number,
-                                  decoration:
-                                      _fieldDecoration('QUOTATION AMOUNT (₹)')),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 22),
-                        const Text('PIPELINE & ASSIGNMENT',
-                            style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primaryDark,
-                                letterSpacing: 0.5)),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _leadSource,
-                                isExpanded: true,
-                                decoration: _fieldDecoration('LEAD SOURCE'),
-                                items: _sourceOptions
-                                    .map((s) => DropdownMenuItem(
-                                        value: s, child: Text(s)))
-                                    .toList(),
-                                onChanged: (val) =>
-                                    setSheetState(() => _leadSource = val!),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _priority,
-                                isExpanded: true,
-                                decoration: _fieldDecoration('PRIORITY'),
-                                items: _priorityOptions
-                                    .map((s) => DropdownMenuItem(
-                                        value: s, child: Text(s)))
-                                    .toList(),
-                                onChanged: (val) =>
-                                    setSheetState(() => _priority = val!),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          value: _status,
-                          isExpanded: true,
-                          decoration: _fieldDecoration('PIPELINE STATUS'),
-                          items: _statusOptions
-                              .map((s) =>
-                                  DropdownMenuItem(value: s, child: Text(s)))
-                              .toList(),
-                          onChanged: (val) =>
-                              setSheetState(() => _status = val!),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          value: _selectedAssignedUser,
-                          isExpanded: true,
-                          decoration: _fieldDecoration('ASSIGN TO SALES REP'),
-                          items: [
-                            const DropdownMenuItem<String>(
-                                value: null, child: Text('Unassigned')),
-                            ..._usersList
-                                .map<DropdownMenuItem<String>>((u) =>
-                                    DropdownMenuItem(
-                                        value: u['id']?.toString(),
-                                        child: Text(
-                                            u['full_name']?.toString() ??
-                                                'User')))
-                                .toList(),
-                          ],
-                          onChanged: (val) =>
-                              setSheetState(() => _selectedAssignedUser = val),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                            controller: _remarkCtrl,
-                            maxLines: 2,
-                            decoration: _fieldDecoration('REMARK / NOTES')),
-                        const SizedBox(height: 26),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isSavingLead
-                                ? null
-                                : () async {
-                                    if (_customerNameCtrl.text.trim().isEmpty ||
-                                        _mobileCtrl.text.trim().isEmpty) {
-                                      _showNotification(
-                                          'Customer Name and Mobile Number are required!',
-                                          isError: true);
-                                      return;
-                                    }
-
-                                    setSheetState(() => _isSavingLead = true);
-
-                                    final payload = {
-                                      'customer_name':
-                                          _customerNameCtrl.text.trim(),
-                                      'mobile_number': _mobileCtrl.text.trim(),
-                                      'alternate_number':
-                                          _altMobileCtrl.text.trim(),
-                                      'email': _emailCtrl.text.trim(),
-                                      'address': _addressCtrl.text.trim(),
-                                      'state': _selectedState,
-                                      'city': _selectedCity,
-                                      'pincode': _pincodeCtrl.text.trim(),
-                                      'solar_requirement': _solarReq,
-                                      'interest_status': _interestStatus,
-                                      'required_kw':
-                                          _requiredKwCtrl.text.trim(),
-                                      'quotation_amount':
-                                          _quotationAmtCtrl.text.trim(),
-                                      'lead_source': _leadSource,
-                                      'priority': _priority,
-                                      'status': _status,
-                                      'assigned_to': _selectedAssignedUser,
-                                      'remark': _remarkCtrl.text.trim(),
-                                    };
-
-                                    Map<String, dynamic> res;
-                                    if (_editingLeadId != null) {
-                                      res = await _service.updateLead(
-                                          _editingLeadId, payload);
-                                    } else {
-                                      res = await _service.createLead(payload);
-                                    }
-
-                                    setSheetState(() => _isSavingLead = false);
-
-                                    if (mounted) {
-                                      if (res['success'] == true) {
-                                        Navigator.pop(ctx);
-                                        _showNotification(
-                                            res['message']?.toString() ??
-                                                'Action completed!');
-                                        _fetchLeads();
-                                      } else {
-                                        _showNotification(
-                                            res['message']?.toString() ??
-                                                'Something went wrong. Please try again.',
-                                            isError: true);
-                                      }
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12))),
-                            child: _isSavingLead
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2))
-                                : Text(
-                                    _editingLeadId == null
-                                        ? 'Create Lead'
-                                        : 'Save Changes',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14.5)),
-                          ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded,
+                              color: Colors.white),
+                          onPressed: () => Navigator.pop(ctx),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+
+                  // Scrollable Body (Sequence Matched)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. PRIMARY DETAILS
+                          const Text('1. PRIMARY DETAILS',
+                              style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryDark,
+                                  letterSpacing: 0.5)),
+                          const SizedBox(height: 10),
+
+                          // Customer Name
+                          TextField(
+                              controller: _customerNameCtrl,
+                              decoration: _fieldDecoration('CUSTOMER NAME *')),
+                          const SizedBox(height: 12),
+
+                          // Mobile Number
+                          TextField(
+                              controller: _mobileCtrl,
+                              keyboardType: TextInputType.phone,
+                              decoration: _fieldDecoration('MOBILE NUMBER *')),
+                          const SizedBox(height: 12),
+
+                          // Required kW
+                          TextField(
+                              controller: _requiredKwCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: _fieldDecoration(
+                                  _interestStatus == 'Interested'
+                                      ? 'REQUIRED kW *'
+                                      : 'REQUIRED kW')),
+                          const SizedBox(height: 12),
+
+                          // Assign To Dropdown
+                          DropdownButtonFormField<String>(
+                            value: _selectedAssignedUser?.toString(),
+                            isExpanded: true,
+                            decoration: _fieldDecoration('ASSIGN TO SALES REP'),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                  value: null, child: Text('Unassigned')),
+                              ..._usersList.map<DropdownMenuItem<String>>((u) =>
+                                  DropdownMenuItem(
+                                      value: u['id']?.toString(),
+                                      child: Text(
+                                          u['full_name']?.toString() ?? 'User',
+                                          overflow: TextOverflow.ellipsis))),
+                            ],
+                            onChanged: (val) => setSheetState(
+                                () => _selectedAssignedUser = val),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // 2. LOCATION & CONTACT (Default: Rajasthan & Jaipur)
+                          const Text('2. LOCATION & CONTACT DETAILS',
+                              style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryDark,
+                                  letterSpacing: 0.5)),
+                          const SizedBox(height: 10),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedState,
+                                  isExpanded: true,
+                                  decoration: _fieldDecoration('STATE'),
+                                  items: IndianStatesCities.states
+                                      .map((s) => DropdownMenuItem(
+                                          value: s,
+                                          child: Text(s,
+                                              overflow: TextOverflow.ellipsis)))
+                                      .toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setSheetState(() {
+                                        _selectedState = val;
+                                        final newCities =
+                                            IndianStatesCities.getCities(val);
+                                        _selectedCity = newCities.isNotEmpty
+                                            ? newCities.first
+                                            : 'Jaipur';
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: citiesList.contains(_selectedCity)
+                                      ? _selectedCity
+                                      : (citiesList.isNotEmpty
+                                          ? citiesList.first
+                                          : 'Jaipur'),
+                                  isExpanded: true,
+                                  decoration: _fieldDecoration('CITY'),
+                                  items: citiesList
+                                      .map((c) => DropdownMenuItem(
+                                          value: c,
+                                          child: Text(c,
+                                              overflow: TextOverflow.ellipsis)))
+                                      .toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setSheetState(() => _selectedCity = val);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                    controller: _altMobileCtrl,
+                                    keyboardType: TextInputType.phone,
+                                    decoration:
+                                        _fieldDecoration('ALTERNATE NUMBER')),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextField(
+                                    controller: _emailCtrl,
+                                    keyboardType: TextInputType.emailAddress,
+                                    decoration:
+                                        _fieldDecoration('EMAIL ADDRESS')),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          TextField(
+                              controller: _addressCtrl,
+                              decoration: _fieldDecoration('FULL ADDRESS')),
+                          const SizedBox(height: 12),
+
+                          TextField(
+                              controller: _pincodeCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: _fieldDecoration('PINCODE')),
+                          const SizedBox(height: 20),
+
+                          // 3. PIPELINE & DATES
+                          const Text('3. SOLAR REQUIREMENT & PIPELINE',
+                              style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryDark,
+                                  letterSpacing: 0.5)),
+                          const SizedBox(height: 10),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _solarReq,
+                                  isExpanded: true,
+                                  decoration: _fieldDecoration('TYPE'),
+                                  items: _solarRequirementOptions
+                                      .map((s) => DropdownMenuItem(
+                                          value: s, child: Text(s)))
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setSheetState(() => _solarReq = val!),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _interestStatus,
+                                  isExpanded: true,
+                                  decoration:
+                                      _fieldDecoration('INTEREST STATUS'),
+                                  items: _interestOptions
+                                      .map((s) => DropdownMenuItem(
+                                          value: s, child: Text(s)))
+                                      .toList(),
+                                  onChanged: (val) => setSheetState(
+                                      () => _interestStatus = val!),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _leadSource,
+                                  isExpanded: true,
+                                  decoration: _fieldDecoration('LEAD SOURCE'),
+                                  items: _sourceOptions
+                                      .map((s) => DropdownMenuItem(
+                                          value: s, child: Text(s)))
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setSheetState(() => _leadSource = val!),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _priority,
+                                  isExpanded: true,
+                                  decoration: _fieldDecoration('PRIORITY'),
+                                  items: _priorityOptions
+                                      .map((s) => DropdownMenuItem(
+                                          value: s, child: Text(s)))
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setSheetState(() => _priority = val!),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _status,
+                                  isExpanded: true,
+                                  decoration:
+                                      _fieldDecoration('PIPELINE STATUS'),
+                                  items: _statusOptions
+                                      .map((s) => DropdownMenuItem(
+                                          value: s, child: Text(s)))
+                                      .toList(),
+                                  onChanged: (val) =>
+                                      setSheetState(() => _status = val!),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextField(
+                                    controller: _quotationAmtCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: _fieldDecoration(
+                                        'QUOTATION AMOUNT (₹)')),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final d = await showDatePicker(
+                                        context: context,
+                                        initialDate: _selectedNextFollowup ??
+                                            DateTime.now()
+                                                .add(const Duration(days: 1)),
+                                        firstDate: DateTime.now().subtract(
+                                            const Duration(days: 365)),
+                                        lastDate: DateTime.now()
+                                            .add(const Duration(days: 365)));
+                                    if (d != null) {
+                                      setSheetState(
+                                          () => _selectedNextFollowup = d);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 14),
+                                    decoration: BoxDecoration(
+                                        color: AppColors.bg,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                            color: AppColors.border)),
+                                    child: Text(
+                                        _selectedNextFollowup == null
+                                            ? 'Next Followup Date'
+                                            : 'Followup: ${_selectedNextFollowup.toString().split(' ')[0]}',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600),
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () async {
+                                    final d = await showDatePicker(
+                                        context: context,
+                                        initialDate: _selectedSiteVisit ??
+                                            DateTime.now()
+                                                .add(const Duration(days: 2)),
+                                        firstDate: DateTime.now().subtract(
+                                            const Duration(days: 365)),
+                                        lastDate: DateTime.now()
+                                            .add(const Duration(days: 365)));
+                                    if (d != null) {
+                                      setSheetState(
+                                          () => _selectedSiteVisit = d);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 14),
+                                    decoration: BoxDecoration(
+                                        color: AppColors.bg,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                            color: AppColors.border)),
+                                    child: Text(
+                                        _selectedSiteVisit == null
+                                            ? 'Site Visit Date'
+                                            : 'Visit: ${_selectedSiteVisit.toString().split(' ')[0]}',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600),
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          TextField(
+                              controller: _remarkCtrl,
+                              maxLines: 2,
+                              decoration: _fieldDecoration('REMARK / NOTES')),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // 3-BUTTON BAR SAFE FIXED SUBMIT CONTAINER
+                  Container(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      10,
+                      16,
+                      bottomInset > 0 ? bottomInset + 10 : bottomPadding + 14,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.card,
+                      border: Border(
+                        top: BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _isSavingLead
+                            ? null
+                            : () async {
+                                if (_customerNameCtrl.text.trim().isEmpty ||
+                                    _mobileCtrl.text.trim().isEmpty) {
+                                  _showNotification(
+                                      'Customer Name and Mobile Number are required!',
+                                      isError: true);
+                                  return;
+                                }
+
+                                if (!RegExp(r'^\d{10}$')
+                                    .hasMatch(_mobileCtrl.text.trim())) {
+                                  _showNotification(
+                                      'Enter a valid 10-digit mobile number!',
+                                      isError: true);
+                                  return;
+                                }
+
+                                if (_interestStatus == 'Interested') {
+                                  final kw = double.tryParse(
+                                      _requiredKwCtrl.text.trim());
+                                  if (kw == null || kw <= 0) {
+                                    _showNotification(
+                                        'Required kW is mandatory when Interested!',
+                                        isError: true);
+                                    return;
+                                  }
+                                }
+
+                                setSheetState(() => _isSavingLead = true);
+
+                                final payload = {
+                                  'customer_name':
+                                      _customerNameCtrl.text.trim(),
+                                  'mobile_number': _mobileCtrl.text.trim(),
+                                  'alternate_number':
+                                      _altMobileCtrl.text.trim(),
+                                  'email': _emailCtrl.text.trim(),
+                                  'address': _addressCtrl.text.trim(),
+                                  'state': _selectedState,
+                                  'city': _selectedCity,
+                                  'pincode': _pincodeCtrl.text.trim(),
+                                  'solar_requirement': _solarReq,
+                                  'interest_status': _interestStatus,
+                                  'required_kw': _requiredKwCtrl.text.trim(),
+                                  'quotation_amount':
+                                      _quotationAmtCtrl.text.trim(),
+                                  'lead_source': _leadSource,
+                                  'priority': _priority,
+                                  'status': _status,
+                                  'assigned_to': _selectedAssignedUser,
+                                  'remark': _remarkCtrl.text.trim(),
+                                  'next_follow_up_date': _selectedNextFollowup
+                                      ?.toIso8601String()
+                                      .split('T')[0],
+                                  'site_visit_date': _selectedSiteVisit
+                                      ?.toIso8601String()
+                                      .split('T')[0],
+                                };
+
+                                Map<String, dynamic> res;
+                                if (_editingLeadId != null) {
+                                  res = await _service.updateLead(
+                                      _editingLeadId, payload);
+                                } else {
+                                  res = await _service.createLead(payload);
+                                }
+
+                                setSheetState(() => _isSavingLead = false);
+
+                                if (mounted) {
+                                  if (res['success'] == true) {
+                                    Navigator.pop(ctx);
+                                    _showNotification(
+                                        res['message']?.toString() ??
+                                            'Action completed!');
+                                    _fetchLeads();
+                                  } else {
+                                    _showNotification(
+                                        res['message']?.toString() ??
+                                            'Something went wrong. Please try again.',
+                                        isError: true);
+                                  }
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 0),
+                        child: _isSavingLead
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : Text(
+                                _editingLeadId == null
+                                    ? 'Create Lead'
+                                    : 'Save Changes',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14.5)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  // Opens the lead detail sheet, which fetches the FULL lead record plus
-  // follow-ups and activity logs from the API (mirrors the web
-  // `openViewDrawer` behaviour instead of only showing the static row
-  // data that was already in the list).
   void _openViewDetailsModal(dynamic lead) {
     showModalBottomSheet(
       context: context,
@@ -969,9 +1120,6 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
                     color: AppColors.primary, strokeWidth: 2.5))
             : Column(
                 children: [
-                  // Slim top progress bar while a search/filter refresh is
-                  // in flight — the KPI cards, filter bar and existing
-                  // list all stay on screen instead of flashing to blank.
                   if (_isRefreshing)
                     const LinearProgressIndicator(
                       minHeight: 2.5,
@@ -1100,9 +1248,9 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
                                                 height: 16,
                                                 child:
                                                     CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color:
-                                                            AppColors.primary),
+                                                  strokeWidth: 2,
+                                                  color: AppColors.primary,
+                                                ),
                                               ),
                                             )
                                           : (_searchCtrl.text.isNotEmpty
@@ -1162,7 +1310,10 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
                                                 child: Text('All Statuses')),
                                             ..._statusOptions.map((s) =>
                                                 DropdownMenuItem(
-                                                    value: s, child: Text(s))),
+                                                    value: s,
+                                                    child: Text(s,
+                                                        overflow: TextOverflow
+                                                            .ellipsis))),
                                           ],
                                           onChanged: (val) {
                                             setState(
@@ -1548,40 +1699,11 @@ class _AdminLeadsScreenState extends ConsumerState<AdminLeadsScreen> {
       ),
     );
   }
-
-  Widget _buildDetailRow(IconData icon, String label, String val) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Text('$label: ',
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary)),
-          Expanded(
-              child: Text(val,
-                  style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary),
-                  overflow: TextOverflow.ellipsis)),
-        ],
-      ),
-    );
-  }
 }
 
 // ======================================================
 // ADMIN LEAD DETAIL SHEET
 // ======================================================
-// Mirrors the web `openViewDrawer` behaviour: fetches the FULL lead
-// record + follow-ups + activity logs from the API (instead of just
-// showing whatever static fields happened to be in the list row),
-// and renders Follow-ups / Activity Log sections that the old modal
-// never had.
 class _AdminLeadDetailSheet extends StatefulWidget {
   final dynamic initialLead;
   final AdminLeadsService service;
