@@ -194,7 +194,7 @@ Color _actionColor(String actionType) {
 String _fmtDate(String? v) {
   if (v == null || v.isEmpty) return '—';
   try {
-    final d = DateTime.parse(v);
+    final d = DateTime.parse(v).toLocal();
     const months = [
       'Jan',
       'Feb',
@@ -231,7 +231,7 @@ bool _isOverdue(String? dateStr, String status) {
   if (dateStr == null || dateStr.isEmpty || kClosedStatuses.contains(status))
     return false;
   try {
-    final due = DateTime.parse(dateStr);
+    final due = DateTime.parse(dateStr).toLocal(); // 👈 .toLocal() add karo
     final today = DateTime.now();
     final dueOnly = DateTime(due.year, due.month, due.day);
     final todayOnly = DateTime(today.year, today.month, today.day);
@@ -254,7 +254,7 @@ String? _followupStatus(String? dateStr, String status) {
     return null;
   }
   try {
-    final due = DateTime.parse(dateStr);
+    final due = DateTime.parse(dateStr).toLocal(); // 👈 .toLocal() add karo
     final dueOnly = DateTime(due.year, due.month, due.day);
     final today = _todayDateOnly();
     final diffDays = dueOnly.difference(today).inDays;

@@ -217,7 +217,7 @@ class _SalesDashboardScreenState extends ConsumerState<SalesDashboardScreen> {
   String _relativeTime(String? value) {
     if (value == null || value.isEmpty) return '';
     try {
-      final date = DateTime.parse(value);
+      final date = DateTime.parse(value).toLocal();
       final diffMins = DateTime.now().difference(date).inMinutes;
       if (diffMins < 1) return 'Just now';
       if (diffMins < 60) return '$diffMins min ago';
@@ -248,7 +248,7 @@ class _SalesDashboardScreenState extends ConsumerState<SalesDashboardScreen> {
   String _followupDate(String? value) {
     if (value == null || value.isEmpty) return '';
     try {
-      final d = DateTime.parse(value);
+      final d = DateTime.parse(value).toLocal();
       const months = [
         'Jan',
         'Feb',

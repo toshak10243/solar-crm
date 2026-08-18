@@ -7,6 +7,8 @@
         android:label="solar_crm_mobile"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:usesCleartextTraffic="true">
 
         <!-- Firebase Notification Channel -->
