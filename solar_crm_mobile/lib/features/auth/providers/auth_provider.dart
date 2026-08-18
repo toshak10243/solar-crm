@@ -47,20 +47,39 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState()) {
     checkAuthStatus();
   }
-
   Future<void> checkAuthStatus() async {
     state = state.copyWith(isLoading: true);
-    final token = await StorageService.getToken();
-    final user = await StorageService.getUser();
 
-    if (token != null && token.isNotEmpty && user != null) {
-      state = state.copyWith(
-        isLoading: false,
-        isAuthenticated: true,
-        user: user,
-        clearError: true,
+    try {
+      // 5 second timeout — agar storage hang ho jaye to bhi app stuck nahi rahega
+      final results = await Future.wait([
+        StorageService.getToken(),
+        StorageService.getUser(),
+      ]).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => [null, null],
       );
-    } else {
+
+      final token = results[0] as String?;
+      final user = results[1] as Map<String, dynamic>?;
+
+      if (token != null && token.isNotEmpty && user != null) {
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: true,
+          user: user,
+          clearError: true,
+        );
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: false,
+          user: null,
+        );
+      }
+    } catch (e) {
+      // Koi bhi error aaye — loading band karo, login screen dikhao
+      print('checkAuthStatus error: $e');
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: false,
